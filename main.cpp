@@ -6,6 +6,10 @@
 #include "iap.h"
 
 #include "cr_section_macros.h"
+#include "printf.h"
+
+#define printf simple_printf
+#define sprintf simple_sprintf
 
 #define max(a,b) ((a)>(b)?(a):(b))
 #define min(a,b) ((a)<(b)?(a):(b))
@@ -29,6 +33,7 @@ static struct eeprom_settings {
 		for (uint32_t x = 0; x < 16; x++) {
 			*dst++ = *src++;
 		}
+		program_count = 8;
 		if (program_curr >= program_count) {
 			program_curr = 0;
 			program_change_count = 0;
@@ -351,6 +356,7 @@ static bool test_button() {
 		if (eeprom_settings.program_curr >= eeprom_settings.program_count) {
 			eeprom_settings.program_curr = 0;
 		}
+		printf("Setting program #%d\n", eeprom_settings.program_curr);
 		eeprom_settings.save();
 		return true;
 	}
@@ -468,6 +474,11 @@ int main () {
 	spi::init();
 
 	Chip_SWM_Deinit();
+
+	printf("== Duck Pond ==\n");
+	printf("There are %d programs total\n", eeprom_settings.program_count);
+	printf("Program has been changed %d times\n", eeprom_settings.program_change_count);
+	printf("Setting program #%d\n", eeprom_settings.program_curr);
 
     while(1) {
 		switch(eeprom_settings.program_curr) {
