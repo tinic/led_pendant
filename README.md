@@ -9,7 +9,7 @@ This project is designed to compile on Debian or derivatives (Ubuntu, Linux Mint
 ```
 - Add a rule to set correct permissions on /dev/ttyUSB? devices and reboot:
 ```
-> sudo echo > /etc/udev/rules.d/50-myusb.rules KERNEL==\"ttyUSB[0-9]*\",MODE=\"0666\"
+> sudo echo > /etc/udev/rules.d/50-myusb.rules KERNEL==\"ttyUSB[0-9]*\",NAME=\"tts/USB%n\",SYMLINK+=\"%k\",GROUP=\"dialout\",MODE=\"0666\"
 > reboot
 ```
 
