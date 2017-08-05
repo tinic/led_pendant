@@ -17,12 +17,12 @@ This project is designed to compile on Debian or derivatives (Ubuntu, Linux Mint
 > cd led_pendant
 > ./bootstrap.sh
 ```
-- Attach the USB2serial converter attached to the LED pendant. Make sure you take over the USB device if you run Linux in a virtual machine. It should show up as a FTDI device.
-- Finally build the project. The Makefile will automatically try to upload the firmware
+- Plug the USB2serial converter attached to the LED pendant into your PC. Make sure you take over the USB device if you run Linux in a virtual machine. It should show up as a FTDI device.
+- Finally build the project. The Makefile will automatically try to upload the firmware:
 ```
 > make
 ```
-- To get UART output from the LED pendant compile and run the leddebug tool
+- To get UART output from the LED pendant compile and run the leddebug tool:
 ```
 > make leddebug
 > ./leddebug
