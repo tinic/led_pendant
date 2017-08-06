@@ -16,6 +16,15 @@
 #define abs(a) ((a)<0?(-a):(a))
 #define constrain(x,a,b) ((x)>(b)?(b):(((x)<(a)?(a):(x))))
 
+static uint32_t system_clock_ms() {
+	static uint32_t div = 0;
+	if (div == 0) {
+		div = (SystemCoreClock / 256) / 1000;
+	}
+
+	return LPC_SCT->COUNT_U / div;
+}
+
 typedef struct rgb_color {
 	uint8_t red, green, blue;
 	rgb_color() {};
@@ -108,7 +117,7 @@ public:
 		return d;
 	}
 
-	void raninit(uint32_t seed) {
+	void init(uint32_t seed) {
 		uint32_t i;
 		a = 0xf1ea5eed, b = c = d = seed;
 		for (i=0; i<20; ++i) {
@@ -144,7 +153,7 @@ static struct eeprom_settings {
 	void load() {
 		uint32_t *src = ((uint32_t *)(START_ADDR_LAST_SECTOR));
 		uint32_t *dst =  (uint32_t *)this;
-		for (uint32_t x = 0; x < 16; x++) {
+		for (uint32_t x = 0; x < sizeof(eeprom_settings)/4; x++) {
 			*dst++ = *src++;
 		}
 	}
@@ -152,7 +161,7 @@ static struct eeprom_settings {
 	void save() {
 		uint32_t *src = ((uint32_t *)(START_ADDR_LAST_SECTOR));
 		uint32_t *dst =  (uint32_t *)this;
-		for (uint32_t x = 0; x < 16; x++) {
+		for (uint32_t x = 0; x < sizeof(eeprom_settings)/4; x++) {
 			if (*dst++ != *src++) {
 				__disable_irq();
 				Chip_IAP_PreSectorForReadWrite(IAP_LAST_SECTOR, IAP_LAST_SECTOR);
@@ -168,7 +177,10 @@ static struct eeprom_settings {
 	uint32_t program_count;
 	uint32_t program_curr;
 	uint32_t program_change_count;
-	uint32_t padding[14];
+	uint32_t bird_color;
+	uint32_t bird_color_index;
+	uint32_t ring_color;
+	uint32_t ring_color_index;
 
 } eeprom_settings;
 
@@ -177,32 +189,32 @@ static class leds {
 public:
 
 	static void set_ring(uint32_t index, uint32_t r, uint32_t g, uint32_t b) {
-		led_data[frnt_ring_indecies[index]*3+0] = r;
-		led_data[frnt_ring_indecies[index]*3+1] = g;
+		led_data[frnt_ring_indecies[index]*3+1] = r;
+		led_data[frnt_ring_indecies[index]*3+0] = g;
 		led_data[frnt_ring_indecies[index]*3+2] = b;
-		led_data[back_ring_indecies[index]*3+0] = r;
-		led_data[back_ring_indecies[index]*3+1] = g;
+		led_data[back_ring_indecies[index]*3+1] = r;
+		led_data[back_ring_indecies[index]*3+0] = g;
 		led_data[back_ring_indecies[index]*3+2] = b;
 	}
 
 	static void set_ring_all(uint32_t index, uint32_t r, uint32_t g, uint32_t b) {
 		if(index < 8) { 
-			led_data[frnt_ring_indecies[index]*3+0] = r;
-			led_data[frnt_ring_indecies[index]*3+1] = g;
+			led_data[frnt_ring_indecies[index]*3+1] = r;
+			led_data[frnt_ring_indecies[index]*3+0] = g;
 			led_data[frnt_ring_indecies[index]*3+2] = b;
 		} else if (index < 16) {
-			led_data[back_ring_indecies[index-8]*3+0] = r;
-			led_data[back_ring_indecies[index-8]*3+1] = g;
+			led_data[back_ring_indecies[index-8]*3+1] = r;
+			led_data[back_ring_indecies[index-8]*3+0] = g;
 			led_data[back_ring_indecies[index-8]*3+2] = b;
 		}
 	}
 
 	static void set_bird(uint32_t index, uint32_t r, uint32_t g, uint32_t b) {
-		led_data[frnt_bird_indecies[index]*3+0] = r;
-		led_data[frnt_bird_indecies[index]*3+1] = g;
+		led_data[frnt_bird_indecies[index]*3+1] = r;
+		led_data[frnt_bird_indecies[index]*3+0] = g;
 		led_data[frnt_bird_indecies[index]*3+2] = b;
-		led_data[back_bird_indecies[index]*3+0] = r;
-		led_data[back_bird_indecies[index]*3+1] = g;
+		led_data[back_bird_indecies[index]*3+1] = r;
+		led_data[back_bird_indecies[index]*3+0] = g;
 		led_data[back_bird_indecies[index]*3+2] = b;
 	}
 
@@ -223,7 +235,7 @@ private:
 } leds;
 
 const uint8_t leds::frnt_ring_indecies[] = {0x14, 0x15, 0x16, 0x17, 0x10, 0x11, 0x12, 0x13};
-const uint8_t leds::back_ring_indecies[] = {0x04, 0x05, 0x06, 0x07, 0x00, 0x01, 0x02, 0x03};
+const uint8_t leds::back_ring_indecies[] = {0x03, 0x04, 0x05, 0x06, 0x07, 0x00, 0x01, 0x02};
 const uint8_t leds::frnt_bird_indecies[] = {0x0D, 0x0C, 0x0E, 0x0F};
 const uint8_t leds::back_bird_indecies[] = {0x09, 0x0B, 0x0A, 0x08};
 
@@ -378,6 +390,22 @@ public:
 	}
 } uart;
 
+class sct {
+public:
+	static void init() {
+		Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_SCT);
+		Chip_SYSCTL_PeriphReset(RESET_SCT);
+		Chip_SCT_Config(LPC_SCT, SCT_CONFIG_32BIT_COUNTER | SCT_CONFIG_CLKMODE_BUSCLK);
+		Chip_SCT_SetMatchCount(LPC_SCT, SCT_MATCH_0, 0xFFFFFFFF);
+		Chip_SCT_SetMatchReload(LPC_SCT, SCT_MATCH_0, 0xFFFFFFFF);
+		LPC_SCT->EV[0].CTRL = (1 << 12);
+		LPC_SCT->EV[0].STATE = 0x00000001;
+		LPC_SCT->LIMIT_U = 0x00000001;
+		LPC_SCT->CTRL_L |= (0xFF << 5);
+		Chip_SCT_ClearControl(LPC_SCT, SCT_CTRL_HALT_L);
+	}
+};
+
 static void delay(uint32_t ms) {
 	for (int32_t c = 0; c < 2200*ms; c++) {
 		__asm volatile (
@@ -413,10 +441,131 @@ static uint32_t rgb_cycle(uint8_t pos) {
 	return colorFrom(pos * 3, 255 - pos * 3, 0);
 }
 
-static bool test_button() {
+static void advance_mode(uint32_t mode) {
+	switch(mode) {
+		case	0:
+				eeprom_settings.bird_color_index++; 
+				eeprom_settings.bird_color_index %= 9; 
+				static uint32_t bird_colors[] = {
+					0x404000,
+					0x404040,
+					0x400810,
+					0x084000,
+					0x204008,
+					0x083040,
+					0x004040,
+					0x000040,
+					0x204020
+				};
+				eeprom_settings.bird_color = bird_colors[eeprom_settings.bird_color_index];
+				break;
+		case	1:
+				eeprom_settings.ring_color_index++; 
+				eeprom_settings.ring_color_index %= 9; 
+				static uint32_t ring_colors[] = {
+					0x404000,
+					0x404040,
+					0x400810,
+					0x084000,
+					0x204008,
+					0x083040,
+					0x004040,
+					0x000040,
+					0x204020
+				};
+				eeprom_settings.ring_color = ring_colors[eeprom_settings.ring_color_index];
+				break;
+	}
+}
+
+static void config_mode() {
+
+	bool do_advance = false;
+	uint32_t mode = 0;
+	for (uint32_t d = 0; d < 8; d++) { leds::set_ring(d,0,0,0); }
+	for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
+	leds::set_ring(mode,0x80,0x00,0x00);
+	for (uint32_t d = 0; d < 4; d++) {
+		leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+				 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+				 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+	}					
+	spi::push_frame();
+
+	// Wait for button up
 	if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
 		delay(100);
+		for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) { 
+		}
+	}
+
+	uint32_t last_up_time = system_clock_ms();
+	// Main loop
+	for (;;) {
+		for (uint32_t d = 0; d < 8; d++) { leds::set_ring(d,0,0,0); }
+		for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
+		switch(mode) {
+			case	0:
+					for (uint32_t d = 0; d < 4; d++) {
+						leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+								 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+								 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+					}					
+					break;
+			case	1:
+					for (uint32_t d = 0; d < 8; d++) {
+						leds::set_ring(d, gamma_curve[(eeprom_settings.ring_color>>16)&0xFF],
+								 		  gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
+								 		  gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]);
+					}					
+					break;
+		}
+		leds::set_ring(mode,0x40,0x00,0x00);
+		spi::push_frame();
+		if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
+			uint32_t d_time = system_clock_ms();
+			delay(100);
+			for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
+				uint32_t u_time = system_clock_ms();
+				if ((u_time - d_time) > 2000) {
+					eeprom_settings.save();
+					return;
+				}
+			}
+			
+			if ((system_clock_ms() - last_up_time) < 250) {
+				mode++;
+				mode %= 2;
+				do_advance = false;
+			} else {
+				do_advance = true;
+			}	
+			last_up_time = system_clock_ms();
+		}
+		if (do_advance && (system_clock_ms() - last_up_time) > 250) {
+			advance_mode(mode);
+			do_advance = false;
+		}
+	}
+}
+
+static bool test_button() {
+	static uint32_t last_config_time = 0;
+	// Don't take into account this button press if we just
+	// came out of configuration
+	if ((system_clock_ms() - last_config_time) < 1000) {
+		return false;
+	}
+	if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
+		uint32_t d_time = system_clock_ms();
+		delay(100);
 		for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
+			uint32_t u_time = system_clock_ms();
+			if ((u_time - d_time) > 2000) {
+				config_mode();
+				last_config_time = system_clock_ms();
+				return false;
+			}
 		}
 		eeprom_settings.program_curr++;
 		eeprom_settings.program_change_count++;
@@ -430,18 +579,18 @@ static bool test_button() {
 	return false;
 }
 
-static void color_ring(uint32_t ring_color, uint32_t bird_color) {
+static void color_ring() {
 	for (; ;) {
 		for (uint32_t d = 0; d < 8; d++) {
-			leds::set_ring(d, gamma_curve[((ring_color>>16)&0xFF)],
-					 		  gamma_curve[((ring_color>> 8)&0xFF)],
-					 		  gamma_curve[((ring_color>> 0)&0xFF)]);
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
 		}
 
 		for (uint32_t d = 0; d < 4; d++) {
-			leds::set_bird(d, gamma_curve[((bird_color>>16)&0xFF)],
-					 		  gamma_curve[((bird_color>> 8)&0xFF)],
-					 		  gamma_curve[((bird_color>> 0)&0xFF)]);
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
 		}
 		delay(5);
 		spi::push_frame();
@@ -472,9 +621,9 @@ static void rgb_walker() {
 		}
 
 		for (uint32_t d = 0; d < 4; d++) {
-			leds::set_bird(d, gamma_curve[0x40],
-					 		  gamma_curve[0x40],
-					 		  gamma_curve[0x00]);
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
 		}
 
 		if (flash) {
@@ -540,9 +689,9 @@ static void rgb_tracer() {
 		}
 
 		for (uint32_t d = 0; d < 4; d++) {
-			leds::set_bird(d, gamma_curve[0x40],
-					 		  gamma_curve[0x40],
-					 		  gamma_curve[0x00]);
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
 		}
 
 		switch_counter ++;
@@ -572,10 +721,11 @@ static void sparkle() {
 		leds::set_ring_all(index,0x40,0x40,0x40);
 
 		for (uint32_t d = 0; d < 4; d++) {
-			leds::set_bird(d, gamma_curve[0x40],
-					 		  gamma_curve[0x40],
-					 		  gamma_curve[0x00]);
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
 		}
+
 		delay(10);
 		spi::push_frame();
 		if (test_button()) {
@@ -583,7 +733,6 @@ static void sparkle() {
 		}
 	}
 }
-
 
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
@@ -602,7 +751,15 @@ int main () {
 	delay(500);
 
 	eeprom_settings.load();
-	eeprom_settings.program_count = 9;
+	eeprom_settings.program_count = 4;
+	if (eeprom_settings.bird_color == 0 ||
+		eeprom_settings.bird_color_index > 6 ||
+		eeprom_settings.ring_color_index > 6 ) {
+	 	eeprom_settings.bird_color = 0x404000;
+		eeprom_settings.bird_color_index = 0;
+	 	eeprom_settings.ring_color = 0x404040;
+		eeprom_settings.ring_color_index = 0;
+	}
 
 	/* Pin Assign 1 bit Configuration */
 	/* RESET */    
@@ -614,10 +771,11 @@ int main () {
 
 	spi::init();
 
+	sct::init();
+
 	Chip_SWM_Deinit();
 
-	random.raninit(0x04C8FACE);
-
+	random.init(0x04C8FACE);
 
 	printf("== Duck Pond ==\n");
 	printf("There are %d programs total\n", eeprom_settings.program_count);
@@ -630,34 +788,16 @@ int main () {
 					rgb_walker();
 					break;
 			case	1:
-					color_ring(0x400000, 0x400000);
+					color_ring();
 					break;
 			case	2:
-					color_ring(0x004000, 0x004000);
-					break;
-			case	3:
-					color_ring(0x000040, 0x000040);
-					break;
-			case	4:
-					color_ring(0x404000, 0x404000);
-					break;
-			case	5:
-					color_ring(0x004040, 0x004040);
-					break;
-			case	6:
-					color_ring(0x400040, 0x400040);
-					break;
-			case	7:
-					color_ring(0x404040, 0x404040);
-					break;
-			case	8:
 					rgb_tracer();
 					break;
-			case	9:
+			case	3:
 					sparkle();
 					break;
 			default:
-					color_ring(0, 0x404040);
+					color_ring();
 					break;
 		}
     }
