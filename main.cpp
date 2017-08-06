@@ -197,6 +197,15 @@ public:
 		led_data[back_ring_indecies[index]*3+2] = b;
 	}
 
+	static void set_ring_synced(uint32_t index, uint32_t r, uint32_t g, uint32_t b) {
+		led_data[frnt_ring_indecies[index]*3+1] = r;
+		led_data[frnt_ring_indecies[index]*3+0] = g;
+		led_data[frnt_ring_indecies[index]*3+2] = b;
+		led_data[back_ring_indecies[(8-index)&7]*3+1] = r;
+		led_data[back_ring_indecies[(8-index)&7]*3+0] = g;
+		led_data[back_ring_indecies[(8-index)&7]*3+2] = b;
+	}
+
 	static void set_ring_all(uint32_t index, uint32_t r, uint32_t g, uint32_t b) {
 		if(index < 8) { 
 			led_data[frnt_ring_indecies[index]*3+1] = r;
@@ -424,23 +433,6 @@ static void delay(uint32_t ms) {
 	}
 }
 
-static uint32_t colorFrom(uint32_t r, uint32_t g, uint32_t b) {
-	return (g<<16) | (r<<8) | b; 
-}
-
-static uint32_t rgb_cycle(uint8_t pos) {
-	pos = 255 - pos;
-	if(pos < 85) {
-		return colorFrom(255 - pos * 3, 0, pos * 3);
-	}
-	if(pos < 170) {
-		pos -= 85;
-		return colorFrom(0, pos * 3, 255 - pos * 3);
-	}
-	pos -= 170;
-	return colorFrom(pos * 3, 255 - pos * 3, 0);
-}
-
 static void advance_mode(uint32_t mode) {
 	switch(mode) {
 		case	0:
@@ -637,11 +629,11 @@ static void rgb_walker() {
 	uint32_t flash = 0;
 	for (;;) {
 
-		uint32_t color = rgb_cycle(rgb_walk/3);
+		rgb_color color = hsvToRgb(rgb_walk/3, 255, 255);
 		for (uint32_t d = 0; d < 8; d++) {
-			leds::set_ring(d, gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color>>16)&0xFF)) >> 8],
-					 	      gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color>> 8)&0xFF)) >> 8],
-					 		  gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color>> 0)&0xFF)) >> 8]);
+			leds::set_ring(d, gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color.red)&0xFF)) >> 8],
+					 	      gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color.green)&0xFF)) >> 8],
+					 		  gamma_curve[(work_buffer[(((0x80/8)*d) + walk)&0x7F] * ((color.blue)&0xFF)) >> 8]);
 		}
 
 		for (uint32_t d = 0; d < 4; d++) {
@@ -663,7 +655,7 @@ static void rgb_walker() {
 		walk &= 0x7F;
 
 		rgb_walk ++;
-		if (rgb_walk > 256*3) {
+		if (rgb_walk > 360*3) {
 			rgb_walk = 0;
 		}
 
@@ -684,6 +676,40 @@ static void rgb_walker() {
 		}
 	}
 }
+static void rgb_glow() {
+	uint32_t rgb_walk = 0;
+	uint32_t walk = 0;
+	int32_t switch_dir = 1;
+	uint32_t switch_counter = 0;
+	for (;;) {
+
+		rgb_color color = hsvToRgb(rgb_walk, 255, 255);
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring_synced(d,
+				gamma_curve[((color.red)&0xFF)/4],
+				gamma_curve[((color.green)&0xFF)/4],
+				gamma_curve[((color.blue)&0xFF)/4]
+			);
+		}
+		
+		rgb_walk ++;
+		if (rgb_walk >= 360) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(50);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
 
 static void rgb_tracer() {
 	uint32_t rgb_walk = 0;
@@ -696,19 +722,17 @@ static void rgb_tracer() {
 			leds::set_ring(d,0,0,0);
 		}
 
-		uint32_t color = rgb_cycle(rgb_walk/3);
-
-
-		leds::set_ring(walk&0x7,
-			gamma_curve[((color>>16)&0xFF)/4],
-			gamma_curve[((color>> 8)&0xFF)/4],
-			gamma_curve[((color>> 0)&0xFF)/4]
+		rgb_color color = hsvToRgb(rgb_walk/3, 255, 255);
+		leds::set_ring_synced(walk&0x7,
+			gamma_curve[((color.red)&0xFF)/4],
+			gamma_curve[((color.green)&0xFF)/4],
+			gamma_curve[((color.blue)&0xFF)/4]
 		);
 
 		walk += switch_dir;
 
 		rgb_walk += 7;
-		if (rgb_walk > 256*3) {
+		if (rgb_walk > 360*3) {
 			rgb_walk = 0;
 		}
 
@@ -799,7 +823,7 @@ int main () {
 	delay(500);
 
 	eeprom_settings.load();
-	eeprom_settings.program_count = 5;
+	eeprom_settings.program_count = 6;
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
 		eeprom_settings.ring_color_index > 16 ) {
@@ -839,12 +863,15 @@ int main () {
 					color_ring();
 					break;
 			case	2:
-					rgb_tracer();
+					rgb_glow();
 					break;
 			case	3:
-					sparkle();
+					rgb_tracer();
 					break;
 			case	4:
+					sparkle();
+					break;
+			case	5:
 					lightning();
 					break;
 			default:
