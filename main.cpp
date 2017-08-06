@@ -496,7 +496,12 @@ static void advance_mode(uint32_t mode) {
 static void config_mode() {
 
 	bool do_advance = false;
+
 	uint32_t mode = 0;
+	// mode 0 == set bird color
+	// mode 1 == set ring color
+
+	// reset to defaults of mode 0 and display now
 	for (uint32_t d = 0; d < 8; d++) { leds::set_ring(d,0,0,0); }
 	for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
 	leds::set_ring(mode,0x80,0x00,0x00);
@@ -507,7 +512,7 @@ static void config_mode() {
 	}					
 	spi::push_frame();
 
-	// Wait for button up
+	// Wait for button up as to not mess things up
 	if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
 		delay(100);
 		for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) { 
@@ -515,7 +520,6 @@ static void config_mode() {
 	}
 
 	uint32_t last_up_time = system_clock_ms();
-	// Main loop
 	for (;;) {
 		for (uint32_t d = 0; d < 8; d++) { leds::set_ring(d,0,0,0); }
 		for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
@@ -542,12 +546,14 @@ static void config_mode() {
 			delay(100);
 			for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
 				uint32_t u_time = system_clock_ms();
+				// long press (>2seconds) exits config mode
 				if ((u_time - d_time) > 2000) {
 					eeprom_settings.save();
 					return;
 				}
 			}
 			
+			// select next config mode if we 'double tapped'.
 			if ((system_clock_ms() - last_up_time) < 500) {
 				mode++;
 				mode %= 2;
@@ -557,6 +563,7 @@ static void config_mode() {
 			}	
 			last_up_time = system_clock_ms();
 		}
+		// advance within a mode (i.e. select next color) if we did not detect double tap
 		if (do_advance && (system_clock_ms() - last_up_time) > 500) {
 			advance_mode(mode);
 			do_advance = false;
@@ -576,12 +583,14 @@ static bool test_button() {
 		delay(100);
 		for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
 			uint32_t u_time = system_clock_ms();
+			// long press > 2 seconds gets us into config mode
 			if ((u_time - d_time) > 2000) {
 				config_mode();
 				last_config_time = system_clock_ms();
 				return false;
 			}
 		}
+		// advance program if we did not end up in config mode
 		eeprom_settings.program_curr++;
 		eeprom_settings.program_change_count++;
 		if (eeprom_settings.program_curr >= eeprom_settings.program_count) {
