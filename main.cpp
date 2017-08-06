@@ -16,13 +16,12 @@
 #define abs(a) ((a)<0?(-a):(a))
 #define constrain(x,a,b) ((x)>(b)?(b):(((x)<(a)?(a):(x))))
 
-static uint32_t system_clock_ms() {
-	static uint32_t div = 0;
-	if (div == 0) {
-		div = (SystemCoreClock / 256) / 1000;
-	}
+static volatile uint32_t system_clock_ms = 0;
 
-	return LPC_SCT->COUNT_U / div;
+extern "C" {
+	void SysTick_Handler(void) {
+		system_clock_ms++;
+	}
 }
 
 typedef struct rgb_color {
@@ -287,12 +286,14 @@ public:
 		Chip_SPI_ClearStatus(LPC_SPI1, SPI_STAT_CLR_RXOV | SPI_STAT_CLR_TXUR | SPI_STAT_CLR_SSA | SPI_STAT_CLR_SSD);
 		Chip_SPI_SetControlInfo(LPC_SPI1, 8, SPI_TXCTL_ASSERT_SSEL | SPI_TXCTL_EOF | SPI_TXCTL_RXIGNORE);
 
+		__disable_irq();
 		for (uint32_t c = 0; c< sizeof(spi0_data); c++) {
 			LPC_SPI0->TXDAT = spi0_data[c];
 			LPC_SPI1->TXDAT = spi1_data[c];
 			while (!(LPC_SPI0->STAT&SPI_STAT_TXRDY)) {}
 			while (!(LPC_SPI1->STAT&SPI_STAT_TXRDY)) {}
 		}
+		__enable_irq();
 
 		Chip_SPI_SendLastFrame_RxIgnore(LPC_SPI0,0,8);
 		Chip_SPI_ClearStatus(LPC_SPI0, SPI_STAT_CLR_SSD);
@@ -399,22 +400,6 @@ public:
 	}
 } uart;
 
-class sct {
-public:
-	static void init() {
-		Chip_Clock_EnablePeriphClock(SYSCTL_CLOCK_SCT);
-		Chip_SYSCTL_PeriphReset(RESET_SCT);
-		Chip_SCT_Config(LPC_SCT, SCT_CONFIG_32BIT_COUNTER | SCT_CONFIG_CLKMODE_BUSCLK);
-		Chip_SCT_SetMatchCount(LPC_SCT, SCT_MATCH_0, 0xFFFFFFFF);
-		Chip_SCT_SetMatchReload(LPC_SCT, SCT_MATCH_0, 0xFFFFFFFF);
-		LPC_SCT->EV[0].CTRL = (1 << 12);
-		LPC_SCT->EV[0].STATE = 0x00000001;
-		LPC_SCT->LIMIT_U = 0x00000001;
-		LPC_SCT->CTRL_L |= (0xFF << 5);
-		Chip_SCT_ClearControl(LPC_SCT, SCT_CTRL_HALT_L);
-	}
-};
-
 static void delay(uint32_t ms) {
 	for (int32_t c = 0; c < 2200*ms; c++) {
 		__asm volatile (
@@ -511,7 +496,7 @@ static void config_mode() {
 		}
 	}
 
-	uint32_t last_up_time = system_clock_ms();
+	uint32_t last_up_time = system_clock_ms;
 	for (;;) {
 		for (uint32_t d = 0; d < 8; d++) { leds::set_ring(d,0,0,0); }
 		for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
@@ -534,10 +519,10 @@ static void config_mode() {
 		leds::set_ring(mode,0x40,0x00,0x00);
 		spi::push_frame();
 		if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
-			uint32_t d_time = system_clock_ms();
+			uint32_t d_time = system_clock_ms;
 			delay(100);
 			for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
-				uint32_t u_time = system_clock_ms();
+				uint32_t u_time = system_clock_ms;
 				// long press (>2seconds) exits config mode
 				if ((u_time - d_time) > 2000) {
 					eeprom_settings.save();
@@ -546,17 +531,17 @@ static void config_mode() {
 			}
 			
 			// select next config mode if we 'double tapped'.
-			if ((system_clock_ms() - last_up_time) < 500) {
+			if ((system_clock_ms - last_up_time) < 500) {
 				mode++;
 				mode %= 2;
 				do_advance = false;
 			} else {
 				do_advance = true;
 			}	
-			last_up_time = system_clock_ms();
+			last_up_time = system_clock_ms;
 		}
 		// advance within a mode (i.e. select next color) if we did not detect double tap
-		if (do_advance && (system_clock_ms() - last_up_time) > 500) {
+		if (do_advance && (system_clock_ms - last_up_time) > 500) {
 			advance_mode(mode);
 			do_advance = false;
 		}
@@ -567,18 +552,18 @@ static bool test_button() {
 	static uint32_t last_config_time = 0;
 	// Don't take into account this button press if we just
 	// came out of configuration
-	if ((system_clock_ms() - last_config_time) < 1000) {
+	if ((system_clock_ms - last_config_time) < 1000) {
 		return false;
 	}
 	if (Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2)) {
-		uint32_t d_time = system_clock_ms();
+		uint32_t d_time = system_clock_ms;
 		delay(100);
 		for (;Chip_GPIO_ReadPortBit(LPC_GPIO_PORT, 0, 2);) {
-			uint32_t u_time = system_clock_ms();
+			uint32_t u_time = system_clock_ms;
 			// long press > 2 seconds gets us into config mode
 			if ((u_time - d_time) > 2000) {
 				config_mode();
-				last_config_time = system_clock_ms();
+				last_config_time = system_clock_ms;
 				return false;
 			}
 		}
@@ -843,11 +828,11 @@ int main () {
 
 	spi::init();
 
-	sct::init();
-
 	Chip_SWM_Deinit();
 
 	random.init(0x04C8FACE);
+
+	SysTick_Config(SystemCoreClock / 1000);
 
 	printf("== Duck Pond ==\n");
 	printf("There are %d programs total\n", eeprom_settings.program_count);
@@ -857,10 +842,10 @@ int main () {
     while(1) {
 		switch(eeprom_settings.program_curr) {
 			case	0:
-					rgb_walker();
+					color_ring();
 					break;
 			case	1:
-					color_ring();
+					rgb_walker();
 					break;
 			case	2:
 					rgb_glow();
