@@ -180,6 +180,7 @@ static struct eeprom_settings {
 	uint32_t bird_color_index;
 	uint32_t ring_color;
 	uint32_t ring_color_index;
+	uint32_t microphone_mode;
 
 } eeprom_settings;
 
@@ -467,6 +468,10 @@ static void advance_mode(uint32_t mode) {
 				};
 				eeprom_settings.ring_color = ring_colors[eeprom_settings.ring_color_index];
 				break;
+		case	2:
+				eeprom_settings.microphone_mode ++;
+				eeprom_settings.microphone_mode %= 2;
+				break;
 	}
 }
 
@@ -515,6 +520,15 @@ static void config_mode() {
 								 		  gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]);
 					}					
 					break;
+			case	2:
+					for (uint32_t d = 0; d < 8; d++) {
+						if (eeprom_settings.microphone_mode) {
+							for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0x40,0x40,0x40); }
+						} else {
+							for (uint32_t d = 0; d < 4; d++) { leds::set_bird(d,0,0,0); }
+						}
+					}					
+					break;
 		}
 		leds::set_ring(mode,0x40,0x00,0x00);
 		spi::push_frame();
@@ -533,7 +547,7 @@ static void config_mode() {
 			// select next config mode if we 'double tapped'.
 			if ((system_clock_ms - last_up_time) < 500) {
 				mode++;
-				mode %= 2;
+				mode %= 3;
 				do_advance = false;
 			} else {
 				do_advance = true;
@@ -580,6 +594,25 @@ static bool test_button() {
 	return false;
 }
 
+static void microphone_flash() {
+	if (!eeprom_settings.microphone_mode) {
+		return;
+	}
+
+	uint32_t min;
+	uint32_t max;
+	adc::sample_min_max(min, max);
+
+	if ( (max - min) > 0x100 ) {
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, 0x40, 0x40, 0x40);
+		}
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, 0x40, 0x40, 0x40);
+		}
+	}
+}
+
 static void color_ring() {
 	for (; ;) {
 		for (uint32_t d = 0; d < 8; d++) {
@@ -593,6 +626,9 @@ static void color_ring() {
 					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
 					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
 		}
+
+		microphone_flash();
+
 		delay(5);
 		spi::push_frame();
 		if (test_button()) {
@@ -627,15 +663,6 @@ static void rgb_walker() {
 					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
 		}
 
-		if (flash) {
-			for (uint32_t d = 0; d < 8; d++) {
-				leds::set_ring(d, 0x40, 0x40, 0x40);
-			}
-			for (uint32_t d = 0; d < 4; d++) {
-				leds::set_bird(d, 0x40, 0x40, 0x40);
-			}
-		}
-
 		walk ++;
 		walk &= 0x7F;
 
@@ -644,17 +671,10 @@ static void rgb_walker() {
 			rgb_walk = 0;
 		}
 
-		uint32_t min;
-		uint32_t max;
-		adc::sample_min_max(min, max);
-
-		if ( (max - min) > 0x100 ) {
-			flash = 1;
-		} else {
-			flash = 0;
-		}
-
 		delay(5);
+
+		microphone_flash();
+
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -689,6 +709,9 @@ static void rgb_glow() {
 		}
 
 		delay(50);
+
+		microphone_flash();
+
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -736,6 +759,9 @@ static void rgb_tracer() {
 		}
 
 		delay(50);
+
+		microphone_flash();
+
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -760,6 +786,9 @@ static void lightning() {
 		}
 
 		delay(10);
+
+		microphone_flash();
+
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -784,6 +813,9 @@ static void sparkle() {
 		}
 
 		delay(50);
+
+		microphone_flash();
+
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -807,17 +839,6 @@ int main () {
 	// wait for caps to charge before we enable LEDs
 	delay(500);
 
-	eeprom_settings.load();
-	eeprom_settings.program_count = 6;
-	if (eeprom_settings.bird_color == 0 ||
-		eeprom_settings.bird_color_index > 16 ||
-		eeprom_settings.ring_color_index > 16 ) {
-	 	eeprom_settings.bird_color = 0x404000;
-		eeprom_settings.bird_color_index = 0;
-	 	eeprom_settings.ring_color = 0x083040;
-		eeprom_settings.ring_color_index = 0;
-	}
-
 	/* Pin Assign 1 bit Configuration */
 	/* RESET */    
 	LPC_SWM->PINENABLE0 = 0xfffffeffUL;
@@ -829,6 +850,22 @@ int main () {
 	spi::init();
 
 	Chip_SWM_Deinit();
+
+	eeprom_settings.load();
+
+	eeprom_settings.program_count = 6;
+
+	if (eeprom_settings.bird_color == 0 ||
+		eeprom_settings.bird_color_index > 16 ||
+		eeprom_settings.ring_color == 0 ||
+		eeprom_settings.ring_color_index > 16 ||
+		eeprom_settings.microphone_mode > 1 ) {
+	 	eeprom_settings.bird_color = 0x404000;
+		eeprom_settings.bird_color_index = 0;
+	 	eeprom_settings.ring_color = 0x083040;
+		eeprom_settings.ring_color_index = 0;
+		eeprom_settings.microphone_mode = 0;
+	}
 
 	random.init(0x04C8FACE);
 
