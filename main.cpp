@@ -519,7 +519,6 @@ static void sparkle() {
 			leds::set_ring(d, 0,0,0);
 		}
 
-		printf("%d",random.get());
 		int index = random.get(0,128);
 		leds::set_ring_all(index,0x40,0x40,0x40);
 
