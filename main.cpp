@@ -445,7 +445,7 @@ static void advance_mode(uint32_t mode) {
 	switch(mode) {
 		case	0:
 				eeprom_settings.bird_color_index++; 
-				eeprom_settings.bird_color_index %= 9; 
+				eeprom_settings.bird_color_index %= 16; 
 				static uint32_t bird_colors[] = {
 					0x404000,
 					0x404040,
@@ -455,13 +455,21 @@ static void advance_mode(uint32_t mode) {
 					0x083040,
 					0x004040,
 					0x000040,
-					0x204020
+					0x004000,
+					0x400000,
+					0x400040,
+					0x204020,
+					0x200000,
+					0x000020,
+					0x002020,
+					0x200020,
+					0x202000
 				};
 				eeprom_settings.bird_color = bird_colors[eeprom_settings.bird_color_index];
 				break;
 		case	1:
 				eeprom_settings.ring_color_index++; 
-				eeprom_settings.ring_color_index %= 9; 
+				eeprom_settings.ring_color_index %= 16; 
 				static uint32_t ring_colors[] = {
 					0x404000,
 					0x404040,
@@ -471,7 +479,14 @@ static void advance_mode(uint32_t mode) {
 					0x083040,
 					0x004040,
 					0x000040,
-					0x204020
+					0x004000,
+					0x400000,
+					0x400040,
+					0x204020,
+					0x200000,
+					0x000020,
+					0x002020,
+					0x200020
 				};
 				eeprom_settings.ring_color = ring_colors[eeprom_settings.ring_color_index];
 				break;
@@ -533,7 +548,7 @@ static void config_mode() {
 				}
 			}
 			
-			if ((system_clock_ms() - last_up_time) < 250) {
+			if ((system_clock_ms() - last_up_time) < 500) {
 				mode++;
 				mode %= 2;
 				do_advance = false;
@@ -542,7 +557,7 @@ static void config_mode() {
 			}	
 			last_up_time = system_clock_ms();
 		}
-		if (do_advance && (system_clock_ms() - last_up_time) > 250) {
+		if (do_advance && (system_clock_ms() - last_up_time) > 500) {
 			advance_mode(mode);
 			do_advance = false;
 		}
@@ -753,11 +768,11 @@ int main () {
 	eeprom_settings.load();
 	eeprom_settings.program_count = 4;
 	if (eeprom_settings.bird_color == 0 ||
-		eeprom_settings.bird_color_index > 6 ||
-		eeprom_settings.ring_color_index > 6 ) {
+		eeprom_settings.bird_color_index > 16 ||
+		eeprom_settings.ring_color_index > 16 ) {
 	 	eeprom_settings.bird_color = 0x404000;
 		eeprom_settings.bird_color_index = 0;
-	 	eeprom_settings.ring_color = 0x404040;
+	 	eeprom_settings.ring_color = 0x083040;
 		eeprom_settings.ring_color_index = 0;
 	}
 
