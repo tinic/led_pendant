@@ -512,6 +512,55 @@ static void rgb_walker() {
 	}
 }
 
+static void rgb_tracer() {
+	uint32_t rgb_walk = 0;
+	uint32_t walk = 0;
+	int32_t switch_dir = 1;
+	uint32_t switch_counter = 0;
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d,0,0,0);
+		}
+
+		uint32_t color = rgb_cycle(rgb_walk/3);
+
+
+		leds::set_ring(walk&0x7,
+			gamma_curve[((color>>16)&0xFF)/4],
+			gamma_curve[((color>> 8)&0xFF)/4],
+			gamma_curve[((color>> 0)&0xFF)/4]
+		);
+
+		walk += switch_dir;
+
+		rgb_walk += 7;
+		if (rgb_walk > 256*3) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[0x40],
+					 		  gamma_curve[0x40],
+					 		  gamma_curve[0x00]);
+		}
+
+		switch_counter ++;
+		if (switch_counter > 64 && random.get(0,2)) {
+			switch_dir *= -1;
+			switch_counter = 0;
+			walk += switch_dir;
+			walk += switch_dir;
+		}
+
+		delay(50);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 static void sparkle() {
 	for (;;) {
 
@@ -602,6 +651,9 @@ int main () {
 					color_ring(0x404040, 0x404040);
 					break;
 			case	8:
+					rgb_tracer();
+					break;
+			case	9:
 					sparkle();
 					break;
 			default:
