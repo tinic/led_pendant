@@ -136,7 +136,7 @@ static int simple_outputi(char **out, int i, int base, int sign, int width, int 
 }
 
 
-static int simple_vsprintf(char **out, char *format, va_list ap)
+static int simple_vsprintf(char **out, const char *format, va_list ap)
 {
 	int width, flags;
 	int pc = 0;
@@ -220,7 +220,7 @@ out:
 	return pc;
 }
 
-int simple_printf(char *fmt, ...)
+int simple_printf(const char *fmt, ...)
 {
 	va_list ap;
 	int r;
@@ -232,7 +232,7 @@ int simple_printf(char *fmt, ...)
 	return r;
 }
 
-int simple_sprintf(char *buf, char *fmt, ...)
+int simple_sprintf(char *buf, const char *fmt, ...)
 {
 	va_list ap;
 	int r;
