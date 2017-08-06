@@ -725,7 +725,7 @@ static void rgb_tracer() {
 	}
 }
 
-static void sparkle() {
+static void lightning() {
 	for (;;) {
 
 		for (uint32_t d = 0; d < 8; d++) {
@@ -742,6 +742,30 @@ static void sparkle() {
 		}
 
 		delay(10);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void sparkle() {
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, 0,0,0);
+		}
+
+		int index = random.get(0,16);
+		leds::set_ring_all(index,random.get(0x00,0x10),random.get(0x00,0x10),random.get(0,0x10));
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(50);
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -766,7 +790,7 @@ int main () {
 	delay(500);
 
 	eeprom_settings.load();
-	eeprom_settings.program_count = 4;
+	eeprom_settings.program_count = 5;
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
 		eeprom_settings.ring_color_index > 16 ) {
@@ -810,6 +834,9 @@ int main () {
 					break;
 			case	3:
 					sparkle();
+					break;
+			case	4:
+					lightning();
 					break;
 			default:
 					color_ring();
