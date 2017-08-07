@@ -776,16 +776,16 @@ static void rgb_vertical_wall() {
 		rgb_color color;
 		color = hsvToRgb(((rgb_walk+  0)/3)%360, 255, 255);
 		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+ 40)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+ 30)/3)%360, 255, 255);
 		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		color = hsvToRgb(((rgb_walk+120)/3)%360, 255, 255);
 		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+200)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+210)/3)%360, 255, 255);
 		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+240)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+230)/3)%360, 255, 255);
 		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 
 		rgb_walk += 7;
@@ -817,16 +817,16 @@ static void rgb_horizontal_wall() {
 		rgb_color color;
 		color = hsvToRgb(((rgb_walk+  0)/3)%360, 255, 255);
 		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+ 40)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+ 30)/3)%360, 255, 255);
 		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		color = hsvToRgb(((rgb_walk+120)/3)%360, 255, 255);
 		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+200)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+210)/3)%360, 255, 255);
 		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
-		color = hsvToRgb(((rgb_walk+240)/3)%360, 255, 255);
+		color = hsvToRgb(((rgb_walk+230)/3)%360, 255, 255);
 		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
 
 		rgb_walk += 7;
