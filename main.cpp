@@ -865,7 +865,8 @@ static void shine_vertical() {
 }
 
 static void shine_horizontal() {
-	uint32_t rgb_walk = 0;
+	int32_t rgb_walk = 0;
+	int32_t switch_dir = 1;
 	for (;;) {
 		rgb_color gradient[256];
 		for (int32_t c = 0; c < 128; c++) {
@@ -896,9 +897,14 @@ static void shine_horizontal() {
 		color = gradient[((rgb_walk+80))%256];
 		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
 
-		rgb_walk += 7;
+		rgb_walk += 7*switch_dir;
 		if (rgb_walk > 256) {
+			rgb_walk = 255;
+			switch_dir *= -1;
+		}
+		if (rgb_walk < 0) {
 			rgb_walk = 0;
+			switch_dir *= -1;
 		}
 
 		for (uint32_t d = 0; d < 4; d++) {
