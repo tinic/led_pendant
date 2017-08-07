@@ -810,6 +810,114 @@ static void rgb_vertical_wall() {
 	}
 }
 
+static void shine_vertical() {
+	uint32_t rgb_walk = 0;
+	for (;;) {
+		rgb_color gradient[256];
+		for (int32_t c = 0; c < 128; c++) {
+			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
+			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
+			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
+			gradient[c] = rgb_color(r, g, b);
+		}
+		for (int32_t c = 0; c < 128; c++) {
+			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
+			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
+			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
+			gradient[c+128] = rgb_color(r, g, b);
+		}
+
+		rgb_color color;
+		color = gradient[((rgb_walk+ 0))%256];
+		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+10))%256];
+		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+40))%256];
+		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+70))%256];
+		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+80))%256];
+		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+
+		rgb_walk += 7;
+		if (rgb_walk > 256) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(80);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void shine_horizontal() {
+	uint32_t rgb_walk = 0;
+	for (;;) {
+		rgb_color gradient[256];
+		for (int32_t c = 0; c < 128; c++) {
+			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
+			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
+			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
+			gradient[c] = rgb_color(r, g, b);
+		}
+		for (int32_t c = 0; c < 128; c++) {
+			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
+			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
+			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
+			gradient[c+128] = rgb_color(r, g, b);
+		}
+
+		rgb_color color;
+		color = gradient[((rgb_walk+ 0))%256];
+		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+10))%256];
+		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+40))%256];
+		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+70))%256];
+		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+		color = gradient[((rgb_walk+80))%256];
+		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
+
+		rgb_walk += 7;
+		if (rgb_walk > 256) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(80);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 static void rgb_horizontal_wall() {
 	uint32_t rgb_walk = 0;
 	for (;;) {
@@ -935,7 +1043,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 8;
+	eeprom_settings.program_count = 10;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -983,6 +1091,12 @@ int main () {
 					break;
 			case 	7:
 					rgb_horizontal_wall();
+					break;
+			case	8:
+					shine_vertical();
+					break;
+			case	9:
+					shine_horizontal();
 					break;
 			default:
 					color_ring();
