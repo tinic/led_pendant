@@ -1114,6 +1114,75 @@ static void heartbeat() {
 	}
 }
 
+static void brilliance() {
+	int32_t current_wait = 0;
+	int32_t wait_time = 0;
+	int32_t rgb_walk = 0;
+	int32_t switch_dir = 1;
+	for (; ;) {
+		rgb_color gradient[256];
+		for (int32_t c = 0; c < 112; c++) {
+			uint32_t r = (eeprom_settings.bird_color>>16)&0xFF;
+			uint32_t g = (eeprom_settings.bird_color>> 8)&0xFF;
+			uint32_t b = (eeprom_settings.bird_color>> 0)&0xFF;
+			gradient[c] = rgb_color(r, g, b);
+		}
+		for (int32_t c = 0; c < 16; c++) {
+			uint32_t r = max((eeprom_settings.bird_color>>16)&0xFF,c*8);
+			uint32_t g = max((eeprom_settings.bird_color>> 8)&0xFF,c*8);
+			uint32_t b = max((eeprom_settings.bird_color>> 0)&0xFF,c*8);
+			gradient[c+112] = rgb_color(r, g, b);
+		}
+		for (int32_t c = 0; c < 16; c++) {
+			uint32_t r = max((eeprom_settings.bird_color>>16)&0xFF,(16-c)*8);
+			uint32_t g = max((eeprom_settings.bird_color>> 8)&0xFF,(16-c)*8);
+			uint32_t b = max((eeprom_settings.bird_color>> 0)&0xFF,(16-c)*8);
+			gradient[c+128] = rgb_color(r, g, b);
+		}
+		for (int32_t c = 0; c < 112; c++) {
+			uint32_t r = (eeprom_settings.bird_color>>16)&0xFF;
+			uint32_t g = (eeprom_settings.bird_color>> 8)&0xFF;
+			uint32_t b = (eeprom_settings.bird_color>> 0)&0xFF;
+			gradient[c+144] = rgb_color(r, g, b);
+		}
+
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			rgb_color color = gradient[((rgb_walk+ 0))%256];
+			leds::set_bird(d, gamma_curve[((color.red)&0xFF)], 
+							  gamma_curve[((color.green)&0xFF)], 
+							  gamma_curve[((color.blue)&0xFF)]);
+		}
+
+		microphone_flash();
+
+		rgb_walk += switch_dir;
+		if (rgb_walk >= 256) {
+			current_wait++;
+			if (current_wait > wait_time) {
+				wait_time = random.get(0,2000);
+				rgb_walk = 0;
+				current_wait = 0;
+			} else {
+				rgb_walk = 255;
+			}
+		}
+
+		delay(10);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
 
@@ -1144,7 +1213,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 12;
+	eeprom_settings.program_count = 13;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1204,6 +1273,9 @@ int main () {
 					break;	
 			case 	11:
 					heartbeat();
+					break;
+			case 	12:
+					brilliance();
 					break;
 			default:
 					color_ring();
