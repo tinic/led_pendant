@@ -101,6 +101,24 @@ static const uint8_t sine_wave[256] = {
 	0x67, 0x6A, 0x6D, 0x70, 0x74, 0x77, 0x7A, 0x7D
 };
 
+static void delay(uint32_t ms) {
+	for (int32_t c = 0; c < 2200*ms; c++) {
+		__asm volatile (
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			"nop\n\t"
+			:::
+		);
+	}
+}
+
 class random {
 public:
 
@@ -400,24 +418,6 @@ public:
 		NVIC_EnableIRQ(UART0_IRQn);
 	}
 } uart;
-
-static void delay(uint32_t ms) {
-	for (int32_t c = 0; c < 2200*ms; c++) {
-		__asm volatile (
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			"nop\n\t"
-			:::
-		);
-	}
-}
 
 static void advance_mode(uint32_t mode) {
 	switch(mode) {
@@ -769,6 +769,88 @@ static void rgb_tracer() {
 	}
 }
 
+static void rgb_vertical_wall() {
+	uint32_t rgb_walk = 0;
+	for (;;) {
+
+		rgb_color color;
+		color = hsvToRgb(((rgb_walk+  0)/3)%360, 255, 255);
+		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+ 40)/3)%360, 255, 255);
+		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+120)/3)%360, 255, 255);
+		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+200)/3)%360, 255, 255);
+		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+240)/3)%360, 255, 255);
+		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+
+		rgb_walk += 7;
+		if (rgb_walk > 360*3) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(40);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void rgb_horizontal_wall() {
+	uint32_t rgb_walk = 0;
+	for (;;) {
+
+		rgb_color color;
+		color = hsvToRgb(((rgb_walk+  0)/3)%360, 255, 255);
+		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+ 40)/3)%360, 255, 255);
+		leds::set_ring_synced(7, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(5, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+120)/3)%360, 255, 255);
+		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(4, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+200)/3)%360, 255, 255);
+		leds::set_ring_synced(1, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		leds::set_ring_synced(3, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+		color = hsvToRgb(((rgb_walk+240)/3)%360, 255, 255);
+		leds::set_ring_synced(2, gamma_curve[((color.red)&0xFF)/4], gamma_curve[((color.green)&0xFF)/4], gamma_curve[((color.blue)&0xFF)/4]);
+
+		rgb_walk += 7;
+		if (rgb_walk > 360*3) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(40);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 static void lightning() {
 	for (;;) {
 
@@ -853,7 +935,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 6;
+	eeprom_settings.program_count = 8;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -895,6 +977,12 @@ int main () {
 					break;
 			case	5:
 					lightning();
+					break;
+			case 	6:
+					rgb_vertical_wall();
+					break;
+			case 	7:
+					rgb_horizontal_wall();
 					break;
 			default:
 					color_ring();
