@@ -828,6 +828,60 @@ static void ring_tracer() {
 	}
 }
 
+static void ring_bar() {
+	uint32_t rgb_walk = 0;
+	uint32_t walk = 0;
+	int32_t switch_dir = 1;
+	uint32_t switch_counter = 0;
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d,0,0,0);
+		}
+
+		leds::set_ring_synced((walk+0)&0x7,
+			gamma_curve[(eeprom_settings.ring_color>>16)&0xFF],
+			gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
+			gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]
+		);
+		leds::set_ring_synced((walk+4)&0x7,
+			gamma_curve[(eeprom_settings.ring_color>>16)&0xFF],
+			gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
+			gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]
+		);
+
+		walk += switch_dir;
+
+		rgb_walk += 7;
+		if (rgb_walk >= 360*3) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		switch_counter ++;
+		if (switch_counter > 64 && random.get(0,2)) {
+			switch_dir *= -1;
+			switch_counter = 0;
+			walk += switch_dir;
+			walk += switch_dir;
+		}
+
+		delay(50);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 static void rgb_vertical_wall() {
 	uint32_t rgb_walk = 0;
 	for (;;) {
@@ -1182,6 +1236,168 @@ static void brilliance() {
 	}
 }
 
+static void tingling() {
+	#define NUM_TINGLES 16
+	struct tingle {
+		bool active;
+		int32_t wait;
+		int32_t index;
+		int32_t progress;
+		bool lightordark;
+	} tingles[NUM_TINGLES] = {0};
+
+	for (; ;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		for (int32_t c = 0 ; c < NUM_TINGLES; c++) {
+			if (tingles[c].active == 0) {
+				tingles[c].wait = random.get(0,25);
+				for (;;) {
+					bool done = true;
+					tingles[c].index = random.get(0,16);
+					for (int32_t d = 0 ; d < NUM_TINGLES; d++) {
+						if( d != c && 
+							tingles[c].active && 
+							tingles[c].index == tingles[d].index) {
+							done = false;
+							break;
+						}
+					}
+					if (done) {
+						break;
+					}
+				}
+				tingles[c].index = random.get(0,16);
+				tingles[c].progress = 0;
+				tingles[c].lightordark = random.get(0,2);
+				tingles[c].active = 1;
+			} else if (tingles[c].progress >= 16) {
+				tingles[c].active = 0;
+			} else if (tingles[c].wait > 0) {
+				tingles[c].wait --;
+			} else {
+				int32_t r = 0,g = 0,b = 0;
+				int32_t progress = tingles[c].progress;
+				if (progress > 8) {
+					progress -= 8;
+					progress = 8 - progress;
+				}
+				if (tingles[c].lightordark) {
+					r = max((eeprom_settings.ring_color>>16)&0xFF,progress*8);
+					g = max((eeprom_settings.ring_color>> 8)&0xFF,progress*8);
+					b = max((eeprom_settings.ring_color>> 0)&0xFF,progress*8);					
+				} else {
+					r = ((eeprom_settings.ring_color>>16)&0xFF)-progress*8;
+					g = ((eeprom_settings.ring_color>> 8)&0xFF)-progress*8;
+					b = ((eeprom_settings.ring_color>> 0)&0xFF)-progress*8;
+					r = max(r,0);
+					g = max(g,0);
+					b = max(b,0);					
+				}
+				leds::set_ring_all(tingles[c].index, gamma_curve[r], 
+								  				 gamma_curve[g], 
+								  				 gamma_curve[b]);
+				tingles[c].progress++;
+			}
+		}
+
+		microphone_flash();
+
+		delay(20);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+
+static void twinkle() {
+	#define NUM_TWINKLE 3
+	struct tingle {
+		bool active;
+		int32_t wait;
+		int32_t index;
+		int32_t progress;
+	} tingles[NUM_TWINKLE] = {0};
+
+	for (; ;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		for (int32_t c = 0 ; c < NUM_TWINKLE; c++) {
+			if (tingles[c].active == 0) {
+				tingles[c].wait = random.get(0,50);
+				for (;;) {
+					bool done = true;
+					tingles[c].index = random.get(0,16);
+					for (int32_t d = 0 ; d < NUM_TWINKLE; d++) {
+						if( d != c && 
+							tingles[c].active && 
+							tingles[c].index == tingles[d].index) {
+							done = false;
+							break;
+						}
+					}
+					if (done) {
+						break;
+					}
+				}
+				tingles[c].index = random.get(0,16);
+				tingles[c].progress = 0;
+				tingles[c].active = 1;
+			} else if (tingles[c].progress >= 16) {
+				tingles[c].active = 0;
+			} else if (tingles[c].wait > 0) {
+				tingles[c].wait --;
+			} else {
+				int32_t r = 0,g = 0,b = 0;
+				int32_t progress = tingles[c].progress;
+				if (progress > 8) {
+					progress -= 8;
+					progress = 8 - progress;
+				}
+
+				r = max((eeprom_settings.ring_color>>16)&0xFF,progress*16);
+				g = max((eeprom_settings.ring_color>> 8)&0xFF,progress*16);
+				b = max((eeprom_settings.ring_color>> 0)&0xFF,progress*16);					
+				leds::set_ring_all(tingles[c].index, gamma_curve[r], 
+								  				 gamma_curve[g], 
+								  				 gamma_curve[b]);
+				tingles[c].progress++;
+			}
+		}
+
+		microphone_flash();
+
+		delay(50);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
 
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
@@ -1213,7 +1429,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 13;
+	eeprom_settings.program_count = 16;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1253,29 +1469,37 @@ int main () {
 			case	4: 
 					ring_tracer();
 					break;
-			case	5:
+			case	5: 
+					ring_bar();
+			case	6:
 					sparkle();
 					break;
-			case	6:
+			case	7:
 					lightning();
 					break;
-			case 	7:
+			case 	8:
 					rgb_vertical_wall();
 					break;
-			case 	8:
+			case 	9:
 					rgb_horizontal_wall();
 					break;
-			case	9:
+			case	10:
 					shine_vertical();
 					break;
-			case	10:
+			case	11:
 					shine_horizontal();
 					break;	
-			case 	11:
+			case 	12:
 					heartbeat();
 					break;
-			case 	12:
+			case 	13:
 					brilliance();
+					break;
+			case    14:
+					tingling();
+					break;
+			case    15:
+					twinkle();
 					break;
 			default:
 					color_ring();
