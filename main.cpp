@@ -1782,6 +1782,84 @@ static void shimmer() {
 	}
 }
 
+static void red() {
+
+	int32_t wait = 1200;
+
+	int32_t index = 0;
+
+	int32_t br = ((eeprom_settings.bird_color>>16)&0xFF);
+	int32_t bg = ((eeprom_settings.bird_color>> 8)&0xFF);
+	int32_t bb = ((eeprom_settings.bird_color>> 0)&0xFF);
+
+	int32_t rr = ((eeprom_settings.ring_color>>16)&0xFF);
+	int32_t rg = ((eeprom_settings.ring_color>> 8)&0xFF);
+	int32_t rb = ((eeprom_settings.ring_color>> 0)&0xFF);
+
+	int32_t b1r = br;
+	int32_t b1g = bg;
+	int32_t b1b = bb;
+
+	int32_t r1r = rr;
+	int32_t r1g = rg;
+	int32_t r1b = rb;
+
+	for (; ;) {
+
+		if (index >= 0) {
+			if (index >= wait) {
+				wait = random.get(1200,10000);
+				printf("%d\n",wait);
+				index = 0;
+			} else if (index >= 0 && index < 64) {
+				int32_t rgt = index-0;
+				int32_t lft = 64-rgt;
+				b1r = (br*lft + 0x40*rgt) / 64;
+				b1g = (bg*lft + 0x00*rgt) / 64;
+				b1b = (bb*lft + 0x10*rgt) / 64;
+				r1r = (rr*lft + 0x40*rgt) / 64;
+				r1g = (rg*lft + 0x00*rgt) / 64;
+				r1b = (rb*lft + 0x10*rgt) / 64;
+				index++;
+			} else if (index >= 600 && index < 664) {
+				int32_t lft = index-600;
+				int32_t rgt = 64-lft;
+				b1r = (br*lft + 0x40*rgt) / 64;
+				b1g = (bg*lft + 0x00*rgt) / 64;
+				b1b = (bb*lft + 0x10*rgt) / 64;
+				r1r = (rr*lft + 0x40*rgt) / 64;
+				r1g = (rg*lft + 0x00*rgt) / 64;
+				r1b = (rb*lft + 0x10*rgt) / 64;
+				index++;
+			} else {
+				index++;
+			}
+		} else {
+			index++;
+		}
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[r1r],
+					 		  gamma_curve[r1g],
+					 		  gamma_curve[r1b]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[b1r],
+					 		  gamma_curve[b1g],
+					 		  gamma_curve[b1b]);
+		}
+
+		microphone_flash();
+
+		delay(20);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
@@ -1813,7 +1891,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 23;
+	eeprom_settings.program_count = 24;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1908,8 +1986,12 @@ int main () {
 					break;
 			case	21:
 					diagonal_wipe();
+					break;
 			case	22:
 					shimmer();
+					break;
+			case	23:
+					red();
 					break;
 			default:
 					color_ring();
