@@ -778,8 +778,51 @@ static void rgb_tracer() {
 	}
 }
 
+static void light_tracer() {
+	uint32_t walk = 0;
+
+	rgb_color gradient[8];
+	int32_t col = eeprom_settings.ring_color;
+	gradient[7] = rgb_color(max(((col>>16)&0xFF)-0x40,0), max(((col>> 8)&0xFF)-0x40,0), max(((col>> 0)&0xFF)-0x40,0));
+	gradient[6] = rgb_color(max(((col>>16)&0xFF)-0x40,0), max(((col>> 8)&0xFF)-0x40,0), max(((col>> 0)&0xFF)-0x40,0));
+	gradient[5] = rgb_color(max(((col>>16)&0xFF)-0x30,0), max(((col>> 8)&0xFF)-0x30,0), max(((col>> 0)&0xFF)-0x30,0));
+	gradient[4] = rgb_color(max(((col>>16)&0xFF)-0x18,0), max(((col>> 8)&0xFF)-0x18,0), max(((col>> 0)&0xFF)-0x18,0));
+	gradient[3] = rgb_color(max(((col>>16)&0xFF)-0x00,0), max(((col>> 8)&0xFF)-0x00,0), max(((col>> 0)&0xFF)-0x00,0));
+	gradient[2] = rgb_color(max((col>>16)&0xFF,0x10), max((col>> 8)&0xFF,0x00), max((col>> 0)&0xFF,0x20));
+	gradient[1] = rgb_color(max((col>>16)&0xFF,0x30), max((col>> 8)&0xFF,0x30), max((col>> 0)&0xFF,0x30));
+	gradient[0] = rgb_color(max((col>>16)&0xFF,0x40), max((col>> 8)&0xFF,0x40), max((col>> 0)&0xFF,0x40));
+
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring((walk+d)&0x7,
+				gamma_curve[((gradient[d].red)&0xFF)],
+				gamma_curve[((gradient[d].green)&0xFF)],
+				gamma_curve[((gradient[d].blue)&0xFF)]
+			);
+		}
+
+		walk--;
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(100);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+
 static void ring_tracer() {
-	uint32_t rgb_walk = 0;
 	uint32_t walk = 0;
 	int32_t switch_dir = 1;
 	uint32_t switch_counter = 0;
@@ -806,11 +849,6 @@ static void ring_tracer() {
 		);
 
 		walk += switch_dir;
-
-		rgb_walk += 7;
-		if (rgb_walk >= 360*3) {
-			rgb_walk = 0;
-		}
 
 		for (uint32_t d = 0; d < 4; d++) {
 			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
@@ -934,21 +972,21 @@ static void rgb_vertical_wall() {
 
 static void shine_vertical() {
 	uint32_t rgb_walk = 0;
-	for (;;) {
-		rgb_color gradient[256];
-		for (int32_t c = 0; c < 128; c++) {
-			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
-			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
-			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
-			gradient[c] = rgb_color(r, g, b);
-		}
-		for (int32_t c = 0; c < 128; c++) {
-			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
-			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
-			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
-			gradient[c+128] = rgb_color(r, g, b);
-		}
+	rgb_color gradient[256];
+	for (int32_t c = 0; c < 128; c++) {
+		uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
+		uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
+		uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
+		gradient[c] = rgb_color(r, g, b);
+	}
+	for (int32_t c = 0; c < 128; c++) {
+		uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
+		uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
+		uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
+		gradient[c+128] = rgb_color(r, g, b);
+	}
 
+	for (;;) {
 		rgb_color color;
 		color = gradient[((rgb_walk+ 0))%256];
 		leds::set_ring_synced(0, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
@@ -989,21 +1027,22 @@ static void shine_vertical() {
 static void shine_horizontal() {
 	int32_t rgb_walk = 0;
 	int32_t switch_dir = 1;
-	for (;;) {
-		rgb_color gradient[256];
-		for (int32_t c = 0; c < 128; c++) {
-			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
-			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
-			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
-			gradient[c] = rgb_color(r, g, b);
-		}
-		for (int32_t c = 0; c < 128; c++) {
-			uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
-			uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
-			uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
-			gradient[c+128] = rgb_color(r, g, b);
-		}
 
+	rgb_color gradient[256];
+	for (int32_t c = 0; c < 128; c++) {
+		uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,c/2);
+		uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,c/2);
+		uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,c/2);
+		gradient[c] = rgb_color(r, g, b);
+	}
+	for (int32_t c = 0; c < 128; c++) {
+		uint32_t r = max((eeprom_settings.ring_color>>16)&0xFF,(128-c)/2);
+		uint32_t g = max((eeprom_settings.ring_color>> 8)&0xFF,(128-c)/2);
+		uint32_t b = max((eeprom_settings.ring_color>> 0)&0xFF,(128-c)/2);
+		gradient[c+128] = rgb_color(r, g, b);
+	}
+
+	for (;;) {
 		rgb_color color;
 		color = gradient[((rgb_walk+ 0))%256];
 		leds::set_ring_synced(6, gamma_curve[((color.red)&0xFF)], gamma_curve[((color.green)&0xFF)], gamma_curve[((color.blue)&0xFF)]);
@@ -1438,7 +1477,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 16;
+	eeprom_settings.program_count = 17;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1480,37 +1519,40 @@ int main () {
 			case	4: 
 					ring_tracer();
 					break;
-			case	5: 
+			case	5:
+					light_tracer();
+					break;
+			case	6: 
 					ring_bar();
 					break;
-			case	6:
+			case	7:
 					sparkle();
 					break;
-			case	7:
+			case	8:
 					lightning();
 					break;
-			case 	8:
+			case 	9:
 					rgb_vertical_wall();
 					break;
-			case 	9:
+			case 	10:
 					rgb_horizontal_wall();
 					break;
-			case	10:
+			case	11:
 					shine_vertical();
 					break;
-			case	11:
+			case	12:
 					shine_horizontal();
 					break;	
-			case 	12:
+			case 	13:
 					heartbeat();
 					break;
-			case 	13:
+			case 	14:
 					brilliance();
 					break;
-			case    14:
+			case    15:
 					tingling();
 					break;
-			case    15:
+			case    16:
 					twinkle();
 					break;
 			default:
