@@ -1729,6 +1729,60 @@ static void diagonal_wipe() {
 	}
 }
 
+static void shimmer() {
+	int32_t walk = 0;
+	int32_t wait = random.get(16,64);
+	int32_t dir = random.get(0,2);
+
+	for (; ;) {
+
+		rgb_color color = rgb_color(((eeprom_settings.ring_color>>16)&0xFF),
+								  ((eeprom_settings.ring_color>> 8)&0xFF),
+								  ((eeprom_settings.ring_color>> 0)&0xFF));
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		int32_t r = color.red;
+		int32_t g = color.green;
+		int32_t b = color.blue;
+		if (walk < 8) {
+			r = max(int32_t(0),r - int32_t(walk));
+			g = max(int32_t(0),g - int32_t(walk));
+			b = max(int32_t(0),b - int32_t(walk));
+		} else if (walk < 16) {
+			r = max(int32_t(0),r - int32_t((8-(walk-8))));
+			g = max(int32_t(0),g - int32_t((8-(walk-8))));
+			b = max(int32_t(0),b - int32_t((8-(walk-8))));
+		}
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[r],
+					 		  gamma_curve[g],
+					 		  gamma_curve[b]);
+		}
+		
+		walk ++;
+		if (walk > wait) {
+			walk = 0;
+			wait = random.get(16,64);
+
+		}
+
+		microphone_flash();
+
+		delay(2);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
 
@@ -1759,7 +1813,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 22;
+	eeprom_settings.program_count = 23;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1854,6 +1908,9 @@ int main () {
 					break;
 			case	21:
 					diagonal_wipe();
+			case	22:
+					shimmer();
+					break;
 			default:
 					color_ring();
 					break;
