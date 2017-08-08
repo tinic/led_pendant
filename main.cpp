@@ -1645,6 +1645,89 @@ static void simple_random() {
 	}
 }
 
+static void diagonal_wipe() {
+
+	int32_t walk = 0;
+	int32_t wait = random.get(60,1500);
+	int32_t dir = random.get(0,2);
+
+	for (; ;) {
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		int32_t i0 = -1;
+		int32_t i1 = -1;
+
+		if (dir) {
+			if (walk < 10) {
+				i0 = 7;
+				i1 = 7;
+			} else if (walk < 20) {
+				i0 = 0;
+				i1 = 6;
+			} else if (walk < 30) {
+				i0 = 1;
+				i1 = 5;
+			} else if (walk < 40) {
+				i0 = 2;
+				i1 = 4;
+			} else if (walk < 50) {
+				i0 = 3;
+				i1 = 3;
+			} else {
+				i0 = -1;
+				i1 = -1;
+			}	
+		} else {
+			if (walk < 10) {
+				i0 = 1;
+				i1 = 1;
+			} else if (walk < 20) {
+				i0 = 0;
+				i1 = 2;
+			} else if (walk < 30) {
+				i0 = 7;
+				i1 = 3;
+			} else if (walk < 40) {
+				i0 = 6;
+				i1 = 4;
+			} else if (walk < 50) {
+				i0 = 5;
+				i1 = 5;
+			} else {
+				i0 = -1;
+				i1 = -1;
+			}	
+		}
+		
+		walk ++;
+		if (walk > wait) {
+			walk = 0;
+			wait = random.get(60,1024);
+			dir = random.get(0,2);
+		}
+
+		if (i0 >= 0) leds::set_ring_synced(i0, 0x40,0x40,0x40);
+		if (i1 >= 0) leds::set_ring_synced(i1, 0x40,0x40,0x40);
+
+		microphone_flash();
+
+		delay(5);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
 
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
@@ -1676,7 +1759,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 21;
+	eeprom_settings.program_count = 22;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1769,6 +1852,8 @@ int main () {
 			case	20:
 					simple_random();
 					break;
+			case	21:
+					diagonal_wipe();
 			default:
 					color_ring();
 					break;
