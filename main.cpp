@@ -101,6 +101,52 @@ static const uint8_t sine_wave[256] = {
 	0x67, 0x6A, 0x6D, 0x70, 0x74, 0x77, 0x7A, 0x7D
 };
 
+static uint32_t bird_colors[] = {
+	0x404000,
+	0x104020,
+	0x005010,
+	0x004040,
+	0x083040,
+	0x001050,
+	0x300050,
+	0x401040,
+	0x501000,
+	0x401818,
+	0x400020,
+	0x453000,
+	0x452000,
+	0x204000,
+	0x201024,
+	0x102014,
+	0x201810,
+	0x101820,
+	0x303030,
+	0x202020,
+};
+
+static uint32_t ring_colors[] = {
+	0x404000,
+	0x104020,
+	0x005010,
+	0x004040,
+	0x083040,
+	0x001050,
+	0x300050,
+	0x401040,
+	0x501000,
+	0x401818,
+	0x400020,
+	0x453000,
+	0x402000,
+	0x204000,
+	0x201024,
+	0x102014,
+	0x201810,
+	0x101820,
+	0x303030,
+	0x202020,
+};
+
 static void delay(uint32_t ms) {
 	for (int32_t c = 0; c < 2200*ms; c++) {
 		__asm volatile (
@@ -423,49 +469,12 @@ static void advance_mode(uint32_t mode) {
 	switch(mode) {
 		case	0:
 				eeprom_settings.bird_color_index++; 
-				eeprom_settings.bird_color_index %= 16; 
-				static uint32_t bird_colors[] = {
-					0x404000,
-					0x404040,
-					0x400810,
-					0x084000,
-					0x204008,
-					0x083040,
-					0x004040,
-					0x000040,
-					0x004000,
-					0x400000,
-					0x400040,
-					0x204020,
-					0x200000,
-					0x000020,
-					0x002020,
-					0x200020,
-					0x202000
-				};
+				eeprom_settings.bird_color_index %= 20; 
 				eeprom_settings.bird_color = bird_colors[eeprom_settings.bird_color_index];
 				break;
 		case	1:
 				eeprom_settings.ring_color_index++; 
-				eeprom_settings.ring_color_index %= 16; 
-				static uint32_t ring_colors[] = {
-					0x404000,
-					0x404040,
-					0x400810,
-					0x084000,
-					0x204008,
-					0x083040,
-					0x004040,
-					0x000040,
-					0x004000,
-					0x400000,
-					0x400040,
-					0x204020,
-					0x200000,
-					0x000020,
-					0x002020,
-					0x200020
-				};
+				eeprom_settings.ring_color_index %= 20; 
 				eeprom_settings.ring_color = ring_colors[eeprom_settings.ring_color_index];
 				break;
 		case	2:
@@ -1441,6 +1450,8 @@ int main () {
 	 	eeprom_settings.ring_color = 0x083040;
 		eeprom_settings.ring_color_index = 0;
 		eeprom_settings.microphone_mode = 0;
+
+		eeprom_settings.save();
 	}
 
 	random.init(0x04C8FACE);
