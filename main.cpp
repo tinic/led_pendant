@@ -1607,6 +1607,45 @@ static void simple_change_bird() {
 	}
 }
 
+static void simple_random() {
+
+	rgb_color colors[16];
+	for (int32_t c = 0; c<16; c++) {
+		colors[c].red = random.get(0x00,0x40);
+		colors[c].green = random.get(0x00,0x40);
+		colors[c].blue = random.get(0x00,0x40);
+	}
+
+	for (; ;) {
+
+		uint32_t index = random.get(0x00,0x10);
+		colors[index].red = random.get(0x00,0x40);
+		colors[index].green = random.get(0x00,0x40);
+		colors[index].blue = random.get(0x00,0x40);
+
+		for (uint32_t d = 0; d < 16; d++) {
+			leds::set_ring_all(d, gamma_curve[colors[d].red],
+					 		      gamma_curve[colors[d].green],
+					 		      gamma_curve[colors[d].blue]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		microphone_flash();
+
+		delay(20);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
 
@@ -1637,7 +1676,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 20;
+	eeprom_settings.program_count = 21;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1726,6 +1765,9 @@ int main () {
 					break;
 			case	19:
 					simple_change_bird();
+					break;
+			case	20:
+					simple_random();
 					break;
 			default:
 					color_ring();
