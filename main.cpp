@@ -1481,7 +1481,7 @@ static void twinkle() {
 	}
 }
 
-static void simple_change() {
+static void simple_change_ring() {
 
 	int32_t color_index = -1;
 
@@ -1544,6 +1544,69 @@ static void simple_change() {
 	}
 }
 
+static void simple_change_bird() {
+
+	int32_t color_index = -1;
+
+	int32_t index = 0;
+
+	int32_t r = random.get(0x00,0x40);
+	int32_t g = random.get(0x00,0x40);
+	int32_t b = random.get(0x00,0x40);
+	int32_t cr = 0;
+	int32_t cg = 0;
+	int32_t cb = 0;
+	int32_t nr = 0;
+	int32_t ng = 0;
+	int32_t nb = 0;
+
+	for (; ;) {
+
+		if (index >= 600) {
+			if (index == 600) {
+				cr = r;
+				cg = g;
+				cb = b;
+				nr = random.get(0x00,0x40);
+				ng = random.get(0x00,0x40);
+				nb = random.get(0x00,0x40);
+			}
+			if (index >= 664) {
+				index = 0;
+			} else {
+				int32_t lft = index-600;
+				int32_t rgt = 64-lft;
+				r = (nr*lft + cr*rgt) / 64;
+				g = (ng*lft + cg*rgt) / 64;
+				b = (nb*lft + cb*rgt) / 64;
+				index++;
+			}
+		} else {
+			index++;
+		}
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[r],
+					 		  gamma_curve[g],
+					 		  gamma_curve[b]);
+		}
+
+		microphone_flash();
+
+		delay(15);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 int main () {
 	Chip_Clock_SetupSystemPLL(3, 1);
 
@@ -1574,7 +1637,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 19;
+	eeprom_settings.program_count = 20;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1659,7 +1722,10 @@ int main () {
 					twinkle();
 					break;
 			case	18:
-					simple_change();
+					simple_change_ring();
+					break;
+			case	19:
+					simple_change_bird();
 					break;
 			default:
 					color_ring();

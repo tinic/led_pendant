@@ -113,9 +113,18 @@ static const unsigned int SectorTable_43xx[] =
     65536, 65536, 65536, 65536, 65536, 65536, 65536
 };
 
-// Used for LPC8xx devices
-static const unsigned int SectorTable_8xx[] =
+// Used for LPC81x devices
+static const unsigned int SectorTable_81x[] =
 {
+     1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024,
+     1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024
+};
+
+// Used for LPC82x devices
+static const unsigned int SectorTable_82x[] =
+{
+     1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024,
+     1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024,
      1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024,
      1024,  1024,  1024,  1024,  1024,  1024,  1024,  1024
 };
@@ -128,12 +137,12 @@ static LPC_DEVICE_TYPE LPCtypes[] =
 
    // id,        id2,  use id2, name of product,          flash size, ram size, total number of sector, max copy size, sector table, chip variant
 
-   { 0x00008100, 0x00000000, 0, "810M021FN8",                      4,   1,  4,  256, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
-   { 0x00008110, 0x00000000, 0, "811M001FDH16",                    8,   2,  8, 1024, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
-   { 0x00008120, 0x00000000, 0, "812M101FDH16",                   16,   4, 16, 1024, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
-   { 0x00008121, 0x00000000, 0, "812M101FD20",                    16,   4, 16, 1024, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
-   { 0x00008122, 0x00000000, 0, "812M101FDH20",                   16,   4, 16, 1024, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
-   { 0x00008242, 0x00000000, 0, "824M201JDH20", 		  32,   8, 32, 1024, SectorTable_8xx,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008100, 0x00000000, 0, "810M021FN8",                      4,   1,  4,  256, SectorTable_81x,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008110, 0x00000000, 0, "811M001FDH16",                    8,   2,  8, 1024, SectorTable_81x,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008120, 0x00000000, 0, "812M101FDH16",                   16,   4, 16, 1024, SectorTable_81x,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008121, 0x00000000, 0, "812M101FD20",                    16,   4, 16, 1024, SectorTable_81x,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008122, 0x00000000, 0, "812M101FDH20",                   16,   4, 16, 1024, SectorTable_81x,  CHIP_VARIANT_LPC8XX  },
+   { 0x00008242, 0x00000000, 0, "824M201JDH20", 		  		  32,   8, 32, 1024, SectorTable_82x,  CHIP_VARIANT_LPC8XX  },
 
    { 0x2500102B, 0x00000000, 0, "1102",                           32,   8,  8, 4096, SectorTable_11xx, CHIP_VARIANT_LPC11XX },
 
