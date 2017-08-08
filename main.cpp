@@ -1809,7 +1809,6 @@ static void red() {
 		if (index >= 0) {
 			if (index >= wait) {
 				wait = random.get(1200,10000);
-				printf("%d\n",wait);
 				index = 0;
 			} else if (index >= 0 && index < 64) {
 				int32_t rgt = index-0;
