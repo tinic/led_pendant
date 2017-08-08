@@ -1471,6 +1471,7 @@ int main () {
 					break;
 			case	5: 
 					ring_bar();
+					break;
 			case	6:
 					sparkle();
 					break;
