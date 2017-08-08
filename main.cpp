@@ -646,6 +646,40 @@ static void color_ring() {
 	}
 }
 
+static void fade_ring() {
+	for (; ;) {
+		rgb_color color;
+		int32_t col = eeprom_settings.ring_color;
+		color = rgb_color(max(((col>>16)&0xFF)-0x20,0), max(((col>> 8)&0xFF)-0x20,0), max(((col>> 0)&0xFF)-0x20,0));
+		leds::set_ring(0, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		color = rgb_color(max(((col>>16)&0xFF)-0x1A,0), max(((col>> 8)&0xFF)-0x1A,0), max(((col>> 0)&0xFF)-0x1A,0));
+		leds::set_ring(1, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		leds::set_ring(7, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		color = rgb_color(max(((col>>16)&0xFF)-0x18,0), max(((col>> 8)&0xFF)-0x18,0), max(((col>> 0)&0xFF)-0x18,0));
+		leds::set_ring(2, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		leds::set_ring(6, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		color = rgb_color(max(((col>>16)&0xFF)-0x10,0), max(((col>> 8)&0xFF)-0x10,0), max(((col>> 0)&0xFF)-0x10,0));
+		leds::set_ring(3, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		leds::set_ring(5, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+		color = rgb_color(max(((col>>16)&0xFF)-0x00,0), max(((col>> 8)&0xFF)-0x00,0), max(((col>> 0)&0xFF)-0x00,0));
+		leds::set_ring(4, gamma_curve[color.red],  gamma_curve[color.green], gamma_curve[color.blue]);
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[((eeprom_settings.bird_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.bird_color>> 0)&0xFF)]);
+		}
+
+		microphone_flash();
+
+		delay(5);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
 static void rgb_walker() {
 
 	static uint8_t work_buffer[0x80] = { 0 };
@@ -1477,7 +1511,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 17;
+	eeprom_settings.program_count = 18;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1507,52 +1541,55 @@ int main () {
 			case	0:
 					color_ring();
 					break;
-			case	1:
-					rgb_walker();
+			case	1:	
+					fade_ring();
 					break;
 			case	2:
-					rgb_glow();
+					rgb_walker();
 					break;
 			case	3:
+					rgb_glow();
+					break;
+			case	4:
 					rgb_tracer();
 					break;
-			case	4: 
+			case	5: 
 					ring_tracer();
 					break;
-			case	5:
+			case	6:
 					light_tracer();
 					break;
-			case	6: 
+			case	7: 
 					ring_bar();
 					break;
-			case	7:
+			case	8:
 					sparkle();
 					break;
-			case	8:
+			case	9:
 					lightning();
 					break;
-			case 	9:
+			case 	10:
 					rgb_vertical_wall();
 					break;
-			case 	10:
+			case 	11:
 					rgb_horizontal_wall();
 					break;
-			case	11:
+			case	12:
 					shine_vertical();
 					break;
-			case	12:
+			case	13:
 					shine_horizontal();
 					break;	
-			case 	13:
+			case 	14:
 					heartbeat();
 					break;
-			case 	14:
+			case 	15:
 					brilliance();
 					break;
-			case    15:
+			case    16:
 					tingling();
 					break;
-			case    16:
+			case    17:
 					twinkle();
 					break;
 			default:
