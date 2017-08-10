@@ -909,7 +909,7 @@ static void ring_tracer() {
 	}
 }
 
-static void ring_bar() {
+static void ring_bar_rotate() {
 	uint32_t rgb_walk = 0;
 	uint32_t walk = 0;
 	int32_t switch_dir = 1;
@@ -930,6 +930,103 @@ static void ring_bar() {
 			gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
 			gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]
 		);
+
+		walk += switch_dir;
+
+		rgb_walk += 7;
+		if (rgb_walk >= 360*3) {
+			rgb_walk = 0;
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		switch_counter ++;
+		if (switch_counter > 64 && random.get(0,2)) {
+			switch_dir *= -1;
+			switch_counter = 0;
+			walk += switch_dir;
+			walk += switch_dir;
+		}
+
+		delay(50);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void ring_bar_move() {
+	uint32_t rgb_walk = 0;
+	uint32_t walk = 0;
+	int32_t switch_dir = 1;
+	uint32_t switch_counter = 0;
+
+	static int8_t indecies0[] = {
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+		0,
+		1,
+		2,
+		3,
+		4
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+	};
+
+	static int8_t indecies1[] = {
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+		0,
+		7,
+		6,
+		5,
+		4,
+		-1,
+		-1,
+		-1,
+		-1,
+		-1,
+	};
+
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d,0,0,0);
+		}
+
+		if (indecies0[(walk)%15] >=0 ) {
+				leds::set_ring_synced(indecies0[(walk)%15],
+				gamma_curve[(eeprom_settings.ring_color>>16)&0xFF],
+				gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
+				gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]
+			);	
+		}
+		if (indecies1[(walk)%15] >=0 ) {
+			leds::set_ring_synced(indecies1[(walk)%15],
+				gamma_curve[(eeprom_settings.ring_color>>16)&0xFF],
+				gamma_curve[(eeprom_settings.ring_color>> 8)&0xFF],
+				gamma_curve[(eeprom_settings.ring_color>> 0)&0xFF]
+			);
+		}
 
 		walk += switch_dir;
 
@@ -1204,6 +1301,33 @@ static void sparkle() {
 		}
 
 		delay(50);
+
+		microphone_flash();
+
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void lightning_crazy() {
+	for (;;) {
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, 0,0,0);
+		}
+
+		int index = random.get(0,16);
+		leds::set_ring_all(index,0x40,0x40,0x40);
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[(eeprom_settings.bird_color>>16)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 8)&0xFF],
+					 		  gamma_curve[(eeprom_settings.bird_color>> 0)&0xFF]);
+		}
+
+		delay(10);
 
 		microphone_flash();
 
@@ -1729,7 +1853,7 @@ static void diagonal_wipe() {
 	}
 }
 
-static void shimmer() {
+static void shimmer_outside() {
 	int32_t walk = 0;
 	int32_t wait = random.get(16,64);
 	int32_t dir = random.get(0,2);
@@ -1775,6 +1899,59 @@ static void shimmer() {
 		microphone_flash();
 
 		delay(2);
+		spi::push_frame();
+		if (test_button()) {
+			return;
+		}
+	}
+}
+
+static void shimmer_inside() {
+	int32_t walk = 0;
+	int32_t wait = random.get(16,64);
+	int32_t dir = random.get(0,2);
+
+	for (; ;) {
+
+		rgb_color color = rgb_color(((eeprom_settings.bird_color>>16)&0xFF),
+								    ((eeprom_settings.bird_color>> 8)&0xFF),
+								    ((eeprom_settings.bird_color>> 0)&0xFF));
+
+		for (uint32_t d = 0; d < 8; d++) {
+			leds::set_ring(d, gamma_curve[((eeprom_settings.ring_color>>16)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 8)&0xFF)],
+					 		  gamma_curve[((eeprom_settings.ring_color>> 0)&0xFF)]);
+		}
+
+		int32_t r = color.red;
+		int32_t g = color.green;
+		int32_t b = color.blue;
+		if (walk < 8) {
+			r = max(int32_t(0),r - int32_t(walk));
+			g = max(int32_t(0),g - int32_t(walk));
+			b = max(int32_t(0),b - int32_t(walk));
+		} else if (walk < 16) {
+			r = max(int32_t(0),r - int32_t((8-(walk-8))));
+			g = max(int32_t(0),g - int32_t((8-(walk-8))));
+			b = max(int32_t(0),b - int32_t((8-(walk-8))));
+		}
+
+		for (uint32_t d = 0; d < 4; d++) {
+			leds::set_bird(d, gamma_curve[r],
+					 		  gamma_curve[g],
+					 		  gamma_curve[b]);
+		}
+		
+		walk ++;
+		if (walk > wait) {
+			walk = 0;
+			wait = random.get(16,64);
+
+		}
+
+		microphone_flash();
+
+		delay(10);
 		spi::push_frame();
 		if (test_button()) {
 			return;
@@ -1890,7 +2067,7 @@ int main () {
 
 	eeprom_settings.load();
 
-	eeprom_settings.program_count = 24;
+	eeprom_settings.program_count = 27;
 
 	if (eeprom_settings.bird_color == 0 ||
 		eeprom_settings.bird_color_index > 16 ||
@@ -1942,54 +2119,63 @@ int main () {
 					light_tracer();
 					break;
 			case	7: 
-					ring_bar();
+					ring_bar_rotate();
 					break;
-			case	8:
-					sparkle();
+			case	8: 
+					ring_bar_move();
 					break;
 			case	9:
+					sparkle();
+					break;
+			case	10:
 					lightning();
 					break;
-			case 	10:
+			case	11:
+					lightning_crazy();
+					break;
+			case 	12:
 					rgb_vertical_wall();
 					break;
-			case 	11:
+			case 	13:
 					rgb_horizontal_wall();
 					break;
-			case	12:
+			case	14:
 					shine_vertical();
 					break;
-			case	13:
+			case	15:
 					shine_horizontal();
 					break;	
-			case 	14:
+			case 	16:
 					heartbeat();
 					break;
-			case 	15:
+			case 	17:
 					brilliance();
 					break;
-			case    16:
+			case    18:
 					tingling();
 					break;
-			case    17:
+			case    19:
 					twinkle();
 					break;
-			case	18:
+			case	20:
 					simple_change_ring();
 					break;
-			case	19:
+			case	21:
 					simple_change_bird();
 					break;
-			case	20:
+			case	22:
 					simple_random();
 					break;
-			case	21:
+			case	23:
 					diagonal_wipe();
 					break;
-			case	22:
-					shimmer();
+			case	24:
+					shimmer_outside();
 					break;
-			case	23:
+			case	25:
+					shimmer_inside();
+					break;
+			case	26:
 					red();
 					break;
 			default:
